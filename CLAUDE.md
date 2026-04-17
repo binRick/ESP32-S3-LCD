@@ -10,12 +10,12 @@
 ### LCD Display
 - **Driver:** ST7789V2, 1.69 inch, 240×280
 - **Interface:** SPI
-- SCLK=GPIO18, CS=GPIO16, RST=GPIO3, DC=GPIO2, BL=GPIO17
+- MOSI=GPIO7, SCLK=GPIO6, CS=GPIO5, DC=GPIO4, RST=GPIO8, BL=GPIO15
 - Colors: 262K (RGB565)
 
 ### Touch Controller
 - **Driver:** CST816T (capacitive I2C)
-- SDA=GPIO11, SCL=GPIO10
+- SDA=GPIO11, SCL=GPIO10, RST=GPIO13, INT=GPIO14
 
 ### IMU
 - **Driver:** QMI8658 (6-axis: accelerometer + gyroscope)
@@ -90,12 +90,12 @@ Key defines for this board:
 #define ST7789_DRIVER
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 280
-#define TFT_MOSI   -1   // not needed for write-only SPI
-#define TFT_SCLK   18
-#define TFT_CS     16
-#define TFT_DC      2
-#define TFT_RST     3
-#define TFT_BL     17
+#define TFT_MOSI    7
+#define TFT_SCLK    6
+#define TFT_CS      5
+#define TFT_DC      4
+#define TFT_RST     8
+#define TFT_BL     15
 #define TFT_BACKLIGHT_ON HIGH
 #define SPI_FREQUENCY  40000000
 ```
