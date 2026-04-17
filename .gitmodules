@@ -1,0 +1,3 @@
+[submodule "esp32-dev-001"]
+	path = esp32-dev-001
+	url = https://github.com/binRick/esp32-dev-001
