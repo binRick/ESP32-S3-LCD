@@ -1,0 +1,19 @@
+# Python virtual environment
+.venv/
+
+# Arduino build artifacts
+build/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Arduino cache
+/cache/
+
+# Compiled objects
+*.o
+*.a
+*.elf
+*.bin
+*.hex
