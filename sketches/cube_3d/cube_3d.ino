@@ -1,4 +1,4 @@
-#include <TFT_eSPI.h>
+#include <Arduino_GFX_Library.h>
 #include <Wire.h>
 #include <math.h>
 
@@ -6,7 +6,25 @@
 #define W        240
 #define H        280
 
-// ── QMI8658 IMU ──────────────────────────────────────────────────────────────
+#define BLACK   0x0000
+#define RED     0xF800
+#define GREEN   0x07E0
+#define BLUE    0x001F
+#define CYAN    0x07FF
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
+
+// ── Display (Arduino_GFX) ─────────────────────────────────────────────────────
+// Row offset = 20: ST7789V2 240×280 sits at rows 20–299 in a 320-row controller
+Arduino_DataBus *bus = new Arduino_ESP32SPI(
+  4 /* DC */, 5 /* CS */, 6 /* SCK */, 7 /* MOSI */,
+  GFX_NOT_DEFINED /* MISO */, SPI2_HOST);
+Arduino_GFX *gfx = new Arduino_ST7789(
+  bus, 8 /* RST */, 0 /* rotation */, true /* IPS */,
+  W, H, 0 /* col_offset */, 20 /* row_offset */);
+Arduino_Canvas *canvas = new Arduino_Canvas(W, H, gfx);
+
+// ── QMI8658 IMU ───────────────────────────────────────────────────────────────
 #define IMU_ADDR  0x6B
 #define REG_WHO   0x00
 #define REG_CTRL1 0x02
@@ -47,10 +65,10 @@ static void imuRead(float &ax, float &ay, float &az,
     uint8_t lo = Wire.read(), hi = Wire.read();
     raw[i] = (int16_t)((hi << 8) | lo);
   }
-  ax = raw[0] / 8192.0f; // 4g scale → LSB/g = 8192
+  ax = raw[0] / 8192.0f;
   ay = raw[1] / 8192.0f;
   az = raw[2] / 8192.0f;
-  gx = raw[3] / 64.0f;   // 512dps scale → LSB/dps = 64
+  gx = raw[3] / 64.0f;
   gy = raw[4] / 64.0f;
   gz = raw[5] / 64.0f;
 }
@@ -66,7 +84,6 @@ static void updateAngles(float ax, float ay, float az,
   float dt = (now - lastUs) * 1e-6f;
   if (dt > 0.1f || dt < 0) dt = 0.01f;
   lastUs = now;
-
   float accPitch = atan2f(ay, sqrtf(ax * ax + az * az));
   float accRoll  = atan2f(-ax, az);
   pitch = ALPHA * (pitch + gx * (M_PI / 180.0f) * dt) + (1 - ALPHA) * accPitch;
@@ -84,9 +101,6 @@ static const uint8_t EDGES[12][2] = {
   {4,5},{5,6},{6,7},{7,4},
   {0,4},{1,5},{2,6},{3,7}
 };
-
-TFT_eSPI tft;
-TFT_eSprite spr = TFT_eSprite(&tft);
 
 static inline void rotateVert(float x, float y, float z,
                                float rx, float ry, float rz,
@@ -107,8 +121,13 @@ static inline void project(float x, float y, float z, int &sx, int &sy) {
   sy = (int)(y * 90.0f / d) + H / 2;
 }
 
+static uint16_t depthColor(float depth, uint8_t r, uint8_t g, uint8_t b) {
+  uint8_t br = (uint8_t)((depth + 2.0f) * 50.0f + 55.0f);
+  return canvas->color565(r ? br : 0, g ? br : 0, b ? br : 0);
+}
+
 static void drawCube(float rx, float ry, float rz) {
-  spr.fillSprite(TFT_BLACK);
+  canvas->fillScreen(BLACK);
 
   float vx[8], vy[8], vz[8];
   int sx[8], sy[8];
@@ -117,22 +136,15 @@ static void drawCube(float rx, float ry, float rz) {
                vx[i], vy[i], vz[i]);
     project(vx[i], vy[i], vz[i], sx[i], sy[i]);
   }
-
-  // Edges — cyan gradient by depth
   for (int e = 0; e < 12; e++) {
     int a = EDGES[e][0], b = EDGES[e][1];
     float depth = (vz[a] + vz[b]) * 0.5f;
-    uint8_t br = (uint8_t)((depth + 2.0f) * 50.0f + 55.0f);
-    spr.drawLine(sx[a], sy[a], sx[b], sy[b], spr.color565(0, br, br));
+    canvas->drawLine(sx[a], sy[a], sx[b], sy[b], depthColor(depth, 0, 1, 1));
   }
-
-  // Vertices — yellow dots
   for (int i = 0; i < 8; i++) {
-    uint8_t br = (uint8_t)((vz[i] + 2.0f) * 50.0f + 55.0f);
-    spr.fillCircle(sx[i], sy[i], 3, spr.color565(br, br, 0));
+    canvas->fillCircle(sx[i], sy[i], 3, depthColor(vz[i], 1, 1, 0));
   }
-
-  spr.pushSprite(0, 0);
+  canvas->flush();
 }
 
 // ── Arduino entry points ──────────────────────────────────────────────────────
@@ -140,15 +152,17 @@ void setup() {
   pinMode(PIN_BL, OUTPUT);
   digitalWrite(PIN_BL, HIGH);
 
-  Wire.begin(11, 10); // SDA=11, SCL=10
+  Wire.begin(11, 10);
   Wire.setClock(400000);
 
-  tft.init();
-  tft.setRotation(0);
-  tft.fillScreen(TFT_BLACK);
+  gfx->begin();
+  canvas->begin();
 
-  spr.createSprite(W, H);
-  spr.setColorDepth(16);
+  // Brief startup flash to confirm display is alive
+  gfx->fillScreen(RED);   delay(300);
+  gfx->fillScreen(GREEN); delay(300);
+  gfx->fillScreen(BLUE);  delay(300);
+  gfx->fillScreen(BLACK);
 
   imuInit();
   lastUs = micros();

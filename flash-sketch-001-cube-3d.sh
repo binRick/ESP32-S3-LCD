@@ -52,20 +52,15 @@ fi
 # ── 3. Libraries ──────────────────────────────────────────────────────────────
 ARDUINO_LIBS="$(arduino-cli config get directories.user 2>/dev/null || echo "$HOME/Documents/Arduino")/libraries"
 
-if ! arduino-cli lib list 2>/dev/null | grep -q "^TFT_eSPI"; then
-  info "Installing TFT_eSPI..."
-  arduino-cli lib install "TFT_eSPI"
+ARDUINO_GFX_DIR="$ARDUINO_LIBS/Arduino_GFX"
+if [ ! -d "$ARDUINO_GFX_DIR" ]; then
+  info "Installing Arduino_GFX from GitHub..."
+  curl -sL https://github.com/moononournation/Arduino_GFX/archive/refs/heads/master.zip -o /tmp/arduino_gfx.zip
+  unzip -q /tmp/arduino_gfx.zip -d "$ARDUINO_LIBS"
+  mv "$ARDUINO_LIBS/Arduino_GFX-master" "$ARDUINO_GFX_DIR"
+  rm /tmp/arduino_gfx.zip
 else
-  info "Library already installed: TFT_eSPI"
-fi
-
-# Patch TFT_eSPI User_Setup.h for Waveshare ESP32-S3-Touch-LCD-1.69
-TFTESPI_DIR="$ARDUINO_LIBS/TFT_eSPI"
-if [ -d "$TFTESPI_DIR" ]; then
-  info "Patching TFT_eSPI User_Setup.h for Waveshare ESP32-S3-Touch-LCD-1.69..."
-  cp "$SCRIPT_DIR/sketches/cube_3d/User_Setup.h" "$TFTESPI_DIR/User_Setup.h"
-else
-  warn "TFT_eSPI dir not found at $TFTESPI_DIR — skipping patch"
+  info "Library already installed: Arduino_GFX"
 fi
 
 # ── 4. Compile ────────────────────────────────────────────────────────────────

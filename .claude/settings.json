@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(system_profiler SPUSBDataType)",
+      "Bash(arduino-cli lib list *)",
+      "Bash(arduino-cli core list *)",
+      "Bash(arduino-cli version *)",
+      "Bash(arduino-cli board list *)"
+    ]
+  }
+}
